@@ -21,12 +21,12 @@ module "vnet" {
   version = "5.0.0"
 
   resource_group_name = local.resource_group.name
-  use_for_each        = true
   vnet_location       = local.resource_group.location
   address_space       = ["192.168.0.0/24"]
-  vnet_name           = "vnet-vm-${random_id.id.hex}"
   subnet_names        = ["subnet-virtual-machine"]
   subnet_prefixes     = ["192.168.0.0/28"]
+  use_for_each        = true
+  vnet_name           = "vnet-vm-${random_id.id.hex}"
 }
 
 resource "tls_private_key" "ssh" {
@@ -45,9 +45,22 @@ resource "azurerm_dedicated_host_group" "example" {
 module "dedicate_host_group" {
   source = "../.."
 
-  location                   = local.resource_group.location
-  image_os                   = "linux"
-  resource_group_name        = local.resource_group.name
+  image_os = "linux"
+  location = local.resource_group.location
+  name     = "dhg-${random_id.id.hex}"
+  os_disk = {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+  resource_group_name = local.resource_group.name
+  size                = var.size
+  subnet_id           = module.vnet.vnet_subnets[0]
+  admin_ssh_keys = [
+    {
+      public_key = tls_private_key.ssh.public_key_openssh
+    }
+  ]
+  admin_username             = "azureuser"
   allow_extension_operations = false
   boot_diagnostics           = false
   dedicated_host_group_id    = azurerm_dedicated_host_group.example.id
@@ -59,20 +72,7 @@ module "dedicate_host_group" {
       }
     ]
   }
-  admin_username = "azureuser"
-  admin_ssh_keys = [
-    {
-      public_key = tls_private_key.ssh.public_key_openssh
-    }
-  ]
-  name = "dhg-${random_id.id.hex}"
-  os_disk = {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
   os_simple = "UbuntuServer"
-  size      = var.size
-  subnet_id = module.vnet.vnet_subnets[0]
 
   depends_on = [azurerm_dedicated_host.example]
 }
@@ -93,9 +93,22 @@ resource "azurerm_dedicated_host" "example" {
 module "dedicate_host" {
   source = "../.."
 
-  location                   = local.resource_group.location
-  image_os                   = "linux"
-  resource_group_name        = local.resource_group.name
+  image_os = "linux"
+  location = local.resource_group.location
+  name     = "dh-${random_id.id.hex}"
+  os_disk = {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+  resource_group_name = local.resource_group.name
+  size                = var.size
+  subnet_id           = module.vnet.vnet_subnets[0]
+  admin_ssh_keys = [
+    {
+      public_key = tls_private_key.ssh.public_key_openssh
+    }
+  ]
+  admin_username             = "azureuser"
   allow_extension_operations = false
   boot_diagnostics           = false
   dedicated_host_id          = azurerm_dedicated_host.example.id
@@ -107,20 +120,7 @@ module "dedicate_host" {
       }
     ]
   }
-  admin_username = "azureuser"
-  admin_ssh_keys = [
-    {
-      public_key = tls_private_key.ssh.public_key_openssh
-    }
-  ]
-  name = "dh-${random_id.id.hex}"
-  os_disk = {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
   os_simple = "UbuntuServer"
-  size      = var.size
-  subnet_id = module.vnet.vnet_subnets[0]
 }
 
 resource "azurerm_network_interface_security_group_association" "dh_nic" {
